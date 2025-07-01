@@ -20,7 +20,7 @@ use tokio::time;
 #[command(about = "A simple Pomodoro timer")]
 struct Cli {}
 
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Debug)]
 enum TimerPhase {
     Work,
     Break,
@@ -234,4 +234,126 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_timer_state_default() {
+        let state = TimerState::default();
+        assert_eq!(state.phase, TimerPhase::Work);
+        assert_eq!(state.remaining_seconds, 25 * 60);
+        assert!(!state.is_paused);
+        assert!(state.last_update.is_none());
+    }
+
+    #[test]
+    fn test_timer_phase_durations() {
+        assert_eq!(TimerState::work_duration(), 25 * 60);
+        assert_eq!(TimerState::break_duration(), 5 * 60);
+    }
+
+    #[test]
+    fn test_timer_state_format_time() {
+        let mut state = TimerState::default();
+
+        // Test 25:00
+        state.remaining_seconds = 25 * 60;
+        assert_eq!(state.format_time(), "25:00");
+
+        // Test 01:30
+        state.remaining_seconds = 90;
+        assert_eq!(state.format_time(), "01:30");
+
+        // Test 00:05
+        state.remaining_seconds = 5;
+        assert_eq!(state.format_time(), "00:05");
+
+        // Test 00:00
+        state.remaining_seconds = 0;
+        assert_eq!(state.format_time(), "00:00");
+    }
+
+    #[test]
+    fn test_timer_phase_emoji() {
+        let mut state = TimerState::default();
+
+        state.phase = TimerPhase::Work;
+        assert_eq!(state.emoji(), "🍅");
+
+        state.phase = TimerPhase::Break;
+        assert_eq!(state.emoji(), "🌴");
+    }
+
+    #[test]
+    fn test_timer_state_reset() {
+        let mut state = TimerState::default();
+
+        // Modify state
+        state.remaining_seconds = 100;
+        state.is_paused = true;
+        state.last_update = Some(123456);
+
+        // Reset to work
+        state.reset_to_work();
+        assert_eq!(state.phase, TimerPhase::Work);
+        assert_eq!(state.remaining_seconds, TimerState::work_duration());
+        assert!(!state.is_paused);
+        assert!(state.last_update.is_none());
+
+        // Reset to break
+        state.reset_to_break();
+        assert_eq!(state.phase, TimerPhase::Break);
+        assert_eq!(state.remaining_seconds, TimerState::break_duration());
+        assert!(!state.is_paused);
+        assert!(state.last_update.is_none());
+    }
+
+    #[test]
+    fn test_timer_state_is_finished() {
+        let mut state = TimerState::default();
+
+        state.remaining_seconds = 100;
+        assert!(!state.is_finished());
+
+        state.remaining_seconds = 0;
+        assert!(state.is_finished());
+    }
+
+    #[test]
+    fn test_timer_state_toggle_pause() {
+        let mut state = TimerState::default();
+
+        assert!(!state.is_paused);
+        state.toggle_pause();
+        assert!(state.is_paused);
+        state.toggle_pause();
+        assert!(!state.is_paused);
+    }
+
+    #[test]
+    fn test_config_path() {
+        let path = get_config_path();
+        assert!(path.to_string_lossy().ends_with(".pomo.json"));
+    }
+
+    #[test]
+    fn test_timer_state_serialization() {
+        let state = TimerState {
+            phase: TimerPhase::Break,
+            remaining_seconds: 300,
+            is_paused: true,
+            last_update: Some(1234567890),
+        };
+
+        let json = serde_json::to_string(&state).unwrap();
+        let deserialized: TimerState = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.phase, TimerPhase::Break);
+        assert_eq!(deserialized.remaining_seconds, 300);
+        assert!(deserialized.is_paused);
+        assert_eq!(deserialized.last_update, Some(1234567890));
+    }
 }
