@@ -1,3 +1,4 @@
+use anyhow::Result;
 use clap::Parser;
 use crossterm::{
     cursor,
@@ -128,7 +129,7 @@ fn load_state() -> TimerState {
     TimerState::default()
 }
 
-fn save_state(state: &TimerState) -> Result<(), Box<dyn std::error::Error>> {
+fn save_state(state: &TimerState) -> Result<()> {
     let config_path = get_config_path();
     let contents = serde_json::to_string_pretty(state)?;
     fs::write(&config_path, contents)?;
@@ -142,7 +143,7 @@ fn show_notification(message: &str) {
         .show();
 }
 
-async fn run_timer() -> Result<(), Box<dyn std::error::Error>> {
+async fn run_timer() -> Result<()> {
     let mut state = load_state();
     let mut last_save = Instant::now();
     let save_interval = Duration::from_secs(5);
@@ -217,7 +218,7 @@ async fn run_timer() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<()> {
     let _cli = Cli::parse();
 
     // Set up Ctrl+C handler

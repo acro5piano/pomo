@@ -90,6 +90,7 @@ The timer state is stored in `~/.pomo.json` with the following structure:
 
 ## Dependencies
 
+- **anyhow** - Ergonomic error handling
 - **clap** - Command line argument parsing
 - **crossterm** - Cross-platform terminal manipulation
 - **serde/serde_json** - JSON serialization for state persistence
